@@ -1,0 +1,18 @@
+name: Start ratelimitd
+description: Build the server and run it with sdk/test-config.json for SDK integration tests.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+    - name: Build and start
+      shell: bash
+      run: |
+        go build -o "$RUNNER_TEMP/ratelimitd" ./cmd/ratelimitd
+        "$RUNNER_TEMP/ratelimitd" -config sdk/test-config.json > "$RUNNER_TEMP/ratelimitd.log" 2>&1 &
+        for i in $(seq 1 50); do
+          curl -fs http://127.0.0.1:18080/healthz >/dev/null && exit 0
+          sleep 0.2
+        done
+        cat "$RUNNER_TEMP/ratelimitd.log"; echo "ratelimitd did not start"; exit 1
