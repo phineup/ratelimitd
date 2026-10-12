@@ -3,7 +3,7 @@
 #include <functional>
 #include <string>
 
-#include "json.hpp"
+#include "ratelimitd/detail/json.hpp"
 #include "ratelimitd/ratelimitd.hpp"
 
 using namespace ratelimitd;

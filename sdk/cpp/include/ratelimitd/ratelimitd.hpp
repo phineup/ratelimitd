@@ -5,6 +5,9 @@
 //   if (!res.allowed) { /* wait res.retry_after() */ }
 //
 // C++17. Needs libcurl for the default transport; the JSON codec is built in.
+//
+// Header-only use: define RATELIMITD_HEADER_ONLY (the CMake target ratelimitd::cpp_header_only
+// and the xmake package config `headeronly` do this) and link libcurl; no ratelimitd library.
 #pragma once
 
 #include <chrono>
@@ -15,6 +18,12 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#ifdef RATELIMITD_HEADER_ONLY
+#define RATELIMITD_INLINE inline
+#else
+#define RATELIMITD_INLINE
+#endif
 
 namespace ratelimitd {
 
@@ -157,3 +166,8 @@ private:
 };
 
 }  // namespace ratelimitd
+
+#ifdef RATELIMITD_HEADER_ONLY
+#include "ratelimitd/detail/client.ipp"
+#include "ratelimitd/detail/curl_transport.ipp"
+#endif

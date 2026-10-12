@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <string>
 
-#include "json.hpp"
+#include "ratelimitd/detail/json.hpp"
 
 static int failures = 0;
 #define CHECK(cond)                                                          \

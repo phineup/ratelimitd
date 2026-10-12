@@ -21,5 +21,6 @@ Build with the repository's root `CMakeLists.txt` (shared with the Rust SDK), `s
 
 ```cmake
 find_package(ratelimitd CONFIG REQUIRED)
-target_link_libraries(app PRIVATE ratelimitd::cpp)
+target_link_libraries(app PRIVATE ratelimitd::cpp)              # compiled library
+target_link_libraries(app PRIVATE ratelimitd::cpp_header_only)  # header-only (defines RATELIMITD_HEADER_ONLY, still needs libcurl)
 ```

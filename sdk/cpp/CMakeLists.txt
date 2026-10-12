@@ -20,13 +20,23 @@ target_include_directories(ratelimitd_cpp
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  )
 target_link_libraries(ratelimitd_cpp PRIVATE CURL::libcurl)
 set_target_properties(ratelimitd_cpp PROPERTIES
   OUTPUT_NAME ratelimitd
   VERSION ${PROJECT_VERSION}
   CXX_EXTENSIONS OFF)
+
+# Header-only flavour: no library to build, the implementation is included by
+# <ratelimitd/ratelimitd.hpp>. Consumers still link libcurl (propagated here).
+add_library(ratelimitd_cpp_header_only INTERFACE)
+add_library(ratelimitd::cpp_header_only ALIAS ratelimitd_cpp_header_only)
+target_compile_features(ratelimitd_cpp_header_only INTERFACE cxx_std_17)
+target_compile_definitions(ratelimitd_cpp_header_only INTERFACE RATELIMITD_HEADER_ONLY)
+target_include_directories(ratelimitd_cpp_header_only INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_link_libraries(ratelimitd_cpp_header_only INTERFACE CURL::libcurl)
 
 if(MSVC)
   target_compile_options(ratelimitd_cpp PRIVATE /W4)
@@ -39,7 +49,11 @@ if(RATELIMITD_CPP_BUILD_TESTS)
   foreach(t test_json test_client)
     add_executable(${t} tests/${t}.cpp)
     target_link_libraries(${t} PRIVATE ratelimitd_cpp)
-    target_include_directories(${t} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     add_test(NAME cpp.${t} COMMAND ${t})
   endforeach()
+
+  # The same client tests against the header-only flavour.
+  add_executable(test_client_header_only tests/test_client.cpp)
+  target_link_libraries(test_client_header_only PRIVATE ratelimitd_cpp_header_only)
+  add_test(NAME cpp.test_client_header_only COMMAND test_client_header_only)
 endif()

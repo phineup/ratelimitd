@@ -34,7 +34,7 @@ if(RATELIMITD_BUILD_CPP)
   if(RATELIMITD_INSTALL)
     include(CMakePackageConfigHelpers)
 
-    install(TARGETS ratelimitd_cpp
+    install(TARGETS ratelimitd_cpp ratelimitd_cpp_header_only
       EXPORT ratelimitdTargets
       ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
       LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -55,6 +55,7 @@ find_dependency(CURL)
 include("${CMAKE_CURRENT_LIST_DIR}/ratelimitdTargets.cmake")
 if(NOT TARGET ratelimitd::cpp)
   add_library(ratelimitd::cpp ALIAS ratelimitd::ratelimitd_cpp)
+  add_library(ratelimitd::cpp_header_only ALIAS ratelimitd::ratelimitd_cpp_header_only)
 endif()
 check_required_components(ratelimitd)
 ]=])
