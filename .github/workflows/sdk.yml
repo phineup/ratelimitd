@@ -1,0 +1,44 @@
+name: SDKs
+
+# Client SDK tests. Runs only when SDK code, the server it talks to, or this
+# workflow changes. Nothing here publishes to a registry; see sdk-publish.yml.
+on:
+  push:
+    branches: [master, development]
+    paths: ['sdk/**', 'cmd/**', 'limiter/**', 'server/**', 'CMakeLists.txt', 'xmake.lua', 'packaging/**', '.github/workflows/sdk.yml']
+  pull_request:
+    branches: [master, development]
+    paths: ['sdk/**', 'cmd/**', 'limiter/**', 'server/**', 'CMakeLists.txt', 'xmake.lua', 'packaging/**', '.github/workflows/sdk.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RATELIMITD_URL: http://127.0.0.1:18080
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Start ratelimitd
+        run: |
+          go build -o "$RUNNER_TEMP/ratelimitd" ./cmd/ratelimitd
+          "$RUNNER_TEMP/ratelimitd" -config sdk/test-config.json &
+          for i in $(seq 1 50); do curl -fs "$RATELIMITD_URL/healthz" && break; sleep 0.1; done
+      - name: SDK checks
+        working-directory: sdk/go
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test -race -count=1 ./...
+          if grep -qE '^\s*(require|replace)' go.mod; then
+            echo "sdk/go/go.mod must have no dependencies"; exit 1
+          fi
