@@ -1,0 +1,30 @@
+{
+  "listen": ":8080",
+  "store": { "type": "memory", "redis_url": "", "key_prefix": "rl" },
+  "on_error": "allow",
+  "auth_tokens": [],
+  "default_policy": "api_default",
+  "policies": {
+    "claude_style": {
+      "description": "5-hour session + weekly limit + short burst",
+      "rules": [
+        { "name": "session_5h", "algorithm": "fixed_window", "anchor": "first_request", "limit": 45, "window": "5h" },
+        { "name": "weekly", "algorithm": "fixed_window", "anchor": "first_request", "limit": 500, "window": "7d" },
+        { "name": "burst", "algorithm": "token_bucket", "limit": 30, "window": "1m", "burst": 5 }
+      ]
+    },
+    "api_default": {
+      "description": "100 per minute (sliding window) + 10000 per day",
+      "rules": [
+        { "name": "per_minute", "algorithm": "sliding_window", "limit": 100, "window": "1m" },
+        { "name": "daily", "algorithm": "fixed_window", "limit": 10000, "window": "1d" }
+      ]
+    },
+    "login": {
+      "description": "Brute-force protection (exact sliding log)",
+      "rules": [
+        { "name": "per_10m", "algorithm": "sliding_log", "limit": 5, "window": "10m" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,6 @@
+# Every change needs review from a code owner (enable "Require review from
+# Code Owners" in branch protection).
+* @hasirciogluhq
+/LICENSE @hasirciogluhq
+/.github/ @hasirciogluhq
+/limiter/redis_script.go @hasirciogluhq
