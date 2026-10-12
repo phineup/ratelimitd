@@ -5,8 +5,13 @@ A single-binary Go sidecar rate limiting service. Zero dependencies (stdlib only
 ## Run
 
 ```bash
-docker run -p 8080:8080 ghcr.io/phineup/ratelimitd:latest
+docker run -p 8080:8080 ghcr.io/phineup/ratelimitd:latest   # or pin a release: ghcr.io/phineup/ratelimitd:v1.0.1
 ```
+
+Prebuilt binaries (Linux and macOS, amd64 and arm64) are attached to every
+[GitHub release](https://github.com/phineup/ratelimitd/releases) as `ratelimitd_vX.Y.Z_<os>_<arch>.tar.gz`
+with a `checksums.txt`. Release tags, container image tags and `ratelimitd -version` all use the same
+`vX.Y.Z` form.
 
 From source:
 
