@@ -48,7 +48,8 @@ AGPL) or code you are not authorized to share (e.g. from your employer).
 - Only maintainers can merge to `development` and `master`; both require passing CI and approving reviews
   (`master` requires more reviewers than `development`).
 - Version tags (`vX.Y.Z`) are created by maintainers from `master`. A tag triggers the release workflow, which
-  builds and publishes the container image to `ghcr.io/phineup/ratelimitd` and marks it `latest` (stable tags only;
+  builds Linux/macOS binaries for the GitHub release and publishes the container image to
+  `ghcr.io/phineup/ratelimitd` with the same `v`-prefixed tag, marking it `latest` (stable tags only;
   `-rc.1` style tags are prereleases).
 
 ## Pull request process
