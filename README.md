@@ -53,21 +53,10 @@ With `on_error: allow` (default), if Redis goes down requests are let through wi
 
 When auth is enabled: `Authorization: Bearer <token>`. `/healthz` is always open.
 
-## Go SDK
+## SDKs
 
-A stdlib-only client lives in [`sdk/go`](sdk/go) (its own module):
-
-```go
-import ratelimitd "github.com/phineup/ratelimitd/sdk/go"
-
-c := ratelimitd.New("http://localhost:8080", ratelimitd.WithToken("secret"))
-res, err := c.Check(ctx, ratelimitd.CheckRequest{Key: "user-42", Policy: "login"})
-if err == nil && !res.Allowed {
-    time.Sleep(res.RetryAfter()) // or return 429 to your caller
-}
-```
-
-A denied request is a normal `Result` with `Allowed == false`, not an error. Also: `Allow`, `Reset`, `Policies`, `Healthy`.
+Client SDKs live in [`sdk/`](sdk): Go, TypeScript/JavaScript, Python, Java, C#, Rust, C++, PHP and Ruby (see [`sdk/README.md`](sdk/README.md)).
+C++ and Rust share the root `CMakeLists.txt`; an xmake package is in `packaging/xmake`.
 
 ## Test
 

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ratelimitd"
+version = "0.1.0"
+description = "Python client for the ratelimitd rate limiting sidecar"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = []
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/phineup/ratelimitd"
+
+[tool.setuptools.packages.find]
+include = ["ratelimitd*"]
+
+[tool.setuptools.package-data]
+ratelimitd = ["py.typed"]

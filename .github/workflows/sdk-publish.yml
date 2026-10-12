@@ -1,0 +1,56 @@
+name: Publish SDKs
+
+# Runs only for version tags (protected by a ruleset), like release.yml.
+# The TypeScript/JavaScript SDK goes to GitHub Packages (npm.pkg.github.com), never to npmjs.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag must be on master
+        run: |
+          git fetch origin master
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/master
+
+  npm-github-packages:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: '@phineup'
+      - name: Version from tag
+        working-directory: sdk/typescript
+        run: npm version --no-git-tag-version "${GITHUB_REF_NAME#v}"
+      - name: Test
+        working-directory: sdk/typescript
+        env:
+          RATELIMITD_URL: http://127.0.0.1:18080
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+      - name: Publish to GitHub Packages
+        working-directory: sdk/typescript
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          case "$GITHUB_REF_NAME" in
+            *-*) npm publish --tag next ;;
+            *)   npm publish ;;
+          esac
