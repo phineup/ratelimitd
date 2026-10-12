@@ -1,0 +1,249 @@
+name: SDKs
+
+# Client SDK tests. Runs only when SDK code, the server it talks to, or the build files change.
+# Nothing here publishes to a registry; see sdk-publish.yml.
+on:
+  push:
+    branches: [master, development]
+    paths:
+      - 'sdk/**'
+      - 'cmd/**'
+      - 'limiter/**'
+      - 'server/**'
+      - 'go.mod'
+      - 'CMakeLists.txt'
+      - 'xmake.lua'
+      - 'packaging/**'
+      - '.github/actions/**'
+      - '.github/workflows/sdk.yml'
+  pull_request:
+    branches: [master, development]
+    paths:
+      - 'sdk/**'
+      - 'cmd/**'
+      - 'limiter/**'
+      - 'server/**'
+      - 'go.mod'
+      - 'CMakeLists.txt'
+      - 'xmake.lua'
+      - 'packaging/**'
+      - '.github/actions/**'
+      - '.github/workflows/sdk.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RATELIMITD_URL: http://127.0.0.1:18080
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - name: Test
+        working-directory: sdk/go
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test -race -count=1 ./...
+          if grep -qE '^\s*(require|replace)' go.mod; then
+            echo "sdk/go/go.mod must have no dependencies"; exit 1
+          fi
+
+  typescript:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Test and build
+        working-directory: sdk/typescript
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+          node -e 'if (typeof require("./dist/cjs/index.cjs").Client !== "function") process.exit(1)'
+          node --input-type=module -e 'import { Client } from "./dist/esm/index.js"; if (typeof Client !== "function") process.exit(1)'
+
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Test
+        working-directory: sdk/python
+        run: python -m unittest discover -s tests -t . -v
+
+  java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: sdk/java/pom.xml
+      - name: Test
+        working-directory: sdk/java
+        run: mvn -B -q test
+
+  csharp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test
+        working-directory: sdk/csharp
+        run: dotnet test tests/Ratelimitd.Tests --nologo
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: sdk/rust
+      - name: Test
+        working-directory: sdk/rust
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+          cargo build --no-default-features
+
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, json
+          tools: composer
+      - name: Test
+        working-directory: sdk/php
+        run: |
+          composer install --no-interaction --no-progress
+          vendor/bin/phpunit
+
+  ruby:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - name: Test
+        working-directory: sdk/ruby
+        run: ruby -Ilib -Itest -e 'Dir["test/**/*_test.rb"].each { |f| require "./#{f}" }'
+
+  # C++ and Rust through the shared CMake entry point, on Linux and macOS.
+  cmake:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install libcurl headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+      - name: Configure, build, test
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DRATELIMITD_BUILD_RUST=ON
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure
+      - name: Install and consume via find_package
+        run: |
+          cmake --install build --prefix "$RUNNER_TEMP/rl"
+          mkdir "$RUNNER_TEMP/consumer"
+          cat > "$RUNNER_TEMP/consumer/CMakeLists.txt" <<'CMAKE'
+          cmake_minimum_required(VERSION 3.16)
+          project(consumer CXX)
+          find_package(ratelimitd CONFIG REQUIRED)
+          add_executable(app main.cpp)
+          target_link_libraries(app PRIVATE ratelimitd::cpp)
+          CMAKE
+          cat > "$RUNNER_TEMP/consumer/main.cpp" <<'CPP'
+          #include <ratelimitd/ratelimitd.hpp>
+          int main() {
+            ratelimitd::Client c("http://127.0.0.1:18080");
+            c.healthy();
+            return c.allow("sdk_test", "consumer") ? 0 : 1;
+          }
+          CPP
+          cmake -S "$RUNNER_TEMP/consumer" -B "$RUNNER_TEMP/consumer/build" -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/rl"
+          cmake --build "$RUNNER_TEMP/consumer/build"
+          "$RUNNER_TEMP/consumer/build/app"
+
+  xmake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install libcurl headers
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+      - name: Build and test
+        run: |
+          xmake f -y --rust=y -m release
+          xmake build -y
+          xmake test
+          xmake run ratelimitd_rust
+      - name: Consume the xmake package
+        run: |
+          mkdir "$RUNNER_TEMP/xconsumer" && cd "$RUNNER_TEMP/xconsumer"
+          cat > xmake.lua <<LUA
+          add_rules("mode.release")
+          set_languages("c++17")
+          add_repositories("ratelimitd $GITHUB_WORKSPACE/packaging/xmake")
+          add_requires("ratelimitd")
+          target("app")
+              set_kind("binary")
+              add_files("main.cpp")
+              add_packages("ratelimitd")
+          LUA
+          cat > main.cpp <<'CPP'
+          #include <ratelimitd/ratelimitd.hpp>
+          int main() {
+            ratelimitd::Client c("http://127.0.0.1:18080");
+            c.healthy();
+            return c.allow("sdk_test", "xmake-consumer") ? 0 : 1;
+          }
+          CPP
+          xmake f -y
+          xmake build -y
+          xmake run

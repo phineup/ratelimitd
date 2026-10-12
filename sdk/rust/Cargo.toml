@@ -1,0 +1,21 @@
+[package]
+name = "ratelimitd"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Rust client for the ratelimitd rate limiting sidecar"
+license = "MIT"
+repository = "https://github.com/phineup/ratelimitd"
+readme = "README.md"
+keywords = ["rate-limit", "ratelimit", "sidecar"]
+categories = ["web-programming::http-client"]
+
+[features]
+default = ["tls"]
+# https:// support. Disable for plain-http sidecar use to drop the TLS stack.
+tls = ["ureq/tls"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "2.10", default-features = false }

@@ -1,0 +1,23 @@
+{
+  "name": "phineup/ratelimitd",
+  "description": "PHP client for the ratelimitd rate limiting sidecar",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.1",
+    "ext-curl": "*",
+    "ext-json": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5 || ^11.0"
+  },
+  "autoload": {
+    "psr-4": { "Ratelimitd\\": "src/" }
+  },
+  "autoload-dev": {
+    "psr-4": { "Ratelimitd\\Tests\\": "tests/" }
+  },
+  "scripts": {
+    "test": "phpunit"
+  }
+}

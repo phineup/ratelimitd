@@ -29,15 +29,6 @@ jobs:
         run: go vet ./...
       - name: test
         run: go test -race ./...
-      - name: Go SDK (separate module)
-        working-directory: sdk/go
-        run: |
-          test -z "$(gofmt -l .)"
-          go vet ./...
-          go test -race ./...
-          if grep -qE '^\s*(require|replace)' go.mod; then
-            echo "sdk/go/go.mod must have no dependencies"; exit 1
-          fi
       - name: no third-party dependencies
         run: |
           if grep -qE '^\s*(require|replace)' go.mod; then
