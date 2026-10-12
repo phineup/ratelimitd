@@ -17,6 +17,9 @@ import (
 	"ratelimitd/server"
 )
 
+// version is set at build time: -ldflags "-X main.version=v1.2.3".
+var version = "dev"
+
 type config struct {
 	Listen string `json:"listen"`
 	Store  struct {
@@ -33,7 +36,13 @@ type config struct {
 func main() {
 	path := flag.String("config", os.Getenv("RATELIMITD_CONFIG"), "path to JSON config")
 	health := flag.Bool("healthcheck", false, "probe /healthz on localhost and exit (for Docker)")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("ratelimitd", version)
+		return
+	}
 
 	cfg := config{Listen: ":8080", OnError: "allow"}
 	cfg.Store.Type = "memory"
