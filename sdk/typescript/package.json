@@ -28,7 +28,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/rename-cjs.mjs",
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test \".build/test/*.test.js\"",
+    "test": "tsc -p tsconfig.test.json && node --test .build/test/client.test.js .build/test/integration.test.js",
     "prepack": "npm run build"
   },
   "devDependencies": {
