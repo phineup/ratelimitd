@@ -36,7 +36,8 @@ jobs:
           fi
 
   dco:
-    if: github.event_name == 'pull_request'
+    # Dependabot commits cannot carry a Signed-off-by line.
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
