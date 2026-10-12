@@ -19,6 +19,15 @@
 #include <utility>
 #include <vector>
 
+// Types that cross a shared-library boundary (exceptions, the Transport interface, Client) keep
+// default visibility so `catch (ratelimitd::TransportError&)` works in programs that link the
+// library as a shared object built with -fvisibility=hidden.
+#if defined(__GNUC__) || defined(__clang__)
+#define RATELIMITD_API __attribute__((visibility("default")))
+#else
+#define RATELIMITD_API
+#endif
+
 #ifdef RATELIMITD_HEADER_ONLY
 #define RATELIMITD_INLINE inline
 #else
@@ -100,7 +109,7 @@ struct CheckResult {
 };
 
 /// Non-2xx response other than 429.
-class ApiError : public std::runtime_error {
+class RATELIMITD_API ApiError : public std::runtime_error {
 public:
     ApiError(int status, std::string message)
         : std::runtime_error("ratelimitd: HTTP " + std::to_string(status) + ": " + message),
@@ -115,7 +124,7 @@ private:
 };
 
 /// Connection, timeout or malformed-response failure.
-class TransportError : public std::runtime_error {
+class RATELIMITD_API TransportError : public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
 };
@@ -126,7 +135,7 @@ struct HttpResponse {
 };
 
 /// Pluggable HTTP transport; implement to use another HTTP stack or to mock in tests.
-class Transport {
+class RATELIMITD_API Transport {
 public:
     virtual ~Transport() = default;
     /// `body` is empty for requests without one. Throw TransportError on network failure.
@@ -145,7 +154,7 @@ struct ClientOptions {
 };
 
 /// Thread-safe client.
-class Client {
+class RATELIMITD_API Client {
 public:
     explicit Client(std::string base_url, ClientOptions options = {});
 
