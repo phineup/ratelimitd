@@ -57,7 +57,7 @@ Rust is a regular cargo crate, so use it with a cargo git dependency.
 
 Git tags and the container image use the `vX.Y.Z` form (`v1.1.0`, `ghcr.io/phineup/ratelimitd:v1.1.0`). Language
 package registries normalize or reject a leading `v`, so packages are published as plain `X.Y.Z` built from the same tag.
-`.github/workflows/sdk-publish.yml` runs on version tags only and, after the integration tests pass:
+The `release` workflow (`.github/workflows/release.yml`) is the only publishing workflow. On a version tag it runs the server tests first, then builds the binaries and container image and publishes the SDKs (each SDK job also runs its own tests against a real server before publishing):
 
 | ecosystem | where it goes |
 |---|---|
@@ -66,7 +66,7 @@ package registries normalize or reject a leading `v`, so packages are published 
 | C# | GitHub Packages NuGet (`nuget.pkg.github.com/phineup`) |
 | Go | pushes the `sdk/go/vX.Y.Z` tag the Go module system needs for subdirectory modules, then primes `proxy.golang.org` (pkg.go.dev) |
 | Ruby | GitHub Packages RubyGems (`rubygems.pkg.github.com/phineup`) |
-| Python | PyPI via trusted publishing (needs the one-time setup described in `sdk-publish.yml`) |
+| Python | PyPI via trusted publishing (needs the one-time setup described in `release.yml`) |
 | Rust, PHP, C++ | installed from the Git tag: GitHub Packages has no Cargo or Composer registry |
 
 Reading GitHub Packages (npm, Maven, NuGet) requires a token with `read:packages`; each SDK README shows the exact configuration.
