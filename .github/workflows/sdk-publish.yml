@@ -5,8 +5,8 @@ name: Publish SDKs
 #   TypeScript/JavaScript -> npm.pkg.github.com, Java -> maven.pkg.github.com, C# -> nuget.pkg.github.com,
 #   Ruby -> rubygems.pkg.github.com
 # GitHub Packages has no PyPI/Composer/Cargo registry, so Python, PHP and Rust are installed from the git tag.
-# Go: the module lives in a subdirectory, so it is "published" by the maintainer pushing the sdk/go/vX.Y.Z tag
-# (tags are admin-only); the job checks it exists and then asks proxy.golang.org for it so go get / pkg.go.dev see it immediately (GoReleaser is not needed for a library).
+# Go: the module lives in a subdirectory, so it is "published" by the job pushing the sdk/go/vX.Y.Z tag
+# (the restrict-tags ruleset excludes sdk/go/*) and then asking proxy.golang.org for it so go get / pkg.go.dev see it immediately (GoReleaser is not needed for a library).
 # Python: PyPI via trusted publishing (OIDC, no token). Enable with the repository variable PYPI_PUBLISH=true after
 # adding this workflow as a trusted publisher for project `ratelimitd` on pypi.org.
 on:
@@ -150,17 +150,20 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
-      # The restrict-tags ruleset only lets admins create tags, so the workflow cannot push
-      # sdk/go/vX.Y.Z itself. The maintainer pushes it together with vX.Y.Z (see CONTRIBUTING.md).
-      - name: sdk/go tag must exist
+      - uses: actions/checkout@v4
+      # Go resolves a subdirectory module from the prefixed tag sdk/go/vX.Y.Z. The restrict-tags
+      # ruleset excludes refs/tags/sdk/go/* so this job can push it with GITHUB_TOKEN; every
+      # other tag stays admin-only.
+      - name: Tag sdk/go/<version> (idempotent)
         run: |
           tag="sdk/go/${GITHUB_REF_NAME}"
-          if ! git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$tag" >/dev/null; then
-            echo "::error::Tag $tag is missing. Push it next to ${GITHUB_REF_NAME}: git tag -a $tag ${GITHUB_REF_NAME}^{} -m \"sdk/go ${GITHUB_REF_NAME}\" && git push origin $tag"
-            exit 1
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "$tag already exists"; exit 0
           fi
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
       - name: Prime proxy.golang.org
         run: |
           mod=github.com/phineup/ratelimitd/sdk/go
