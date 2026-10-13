@@ -74,7 +74,7 @@ Each has its own README with installation and full examples; see the [SDK overvi
 |---|---|---|
 | Go | `go get github.com/phineup/ratelimitd/sdk/go` | [sdk/go](sdk/go) |
 | TypeScript / JavaScript | `npm i @phineup/ratelimitd` (GitHub Packages) | [sdk/typescript](sdk/typescript) |
-| Python | `pip install "git+https://github.com/phineup/ratelimitd.git#subdirectory=sdk/python"` | [sdk/python](sdk/python) |
+| Python | `pip install ratelimitd` (PyPI) | [sdk/python](sdk/python) |
 | Java | Maven `com.phineup:ratelimitd` (GitHub Packages) | [sdk/java](sdk/java) |
 | C# / .NET | `dotnet add package Phineup.Ratelimitd` (GitHub Packages) | [sdk/csharp](sdk/csharp) |
 | Rust | `ratelimitd = { git = "https://github.com/phineup/ratelimitd" }` | [sdk/rust](sdk/rust) |

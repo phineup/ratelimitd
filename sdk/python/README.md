@@ -4,7 +4,12 @@ Standard-library-only Python client for [ratelimitd](https://github.com/phineup/
 
 ## Install
 
-Not on PyPI yet; install straight from the GitHub repository (the package is in the `sdk/python` subdirectory):
+```bash
+pip install ratelimitd
+```
+
+The package is published to [PyPI](https://pypi.org/project/ratelimitd/) on every release (GitHub Packages has no Python
+registry). To install an unreleased state straight from the GitHub repository (the package is in the `sdk/python` subdirectory):
 
 ```bash
 pip install "git+https://github.com/phineup/ratelimitd.git@v1.1.0#subdirectory=sdk/python"

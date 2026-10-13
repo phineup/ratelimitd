@@ -7,7 +7,7 @@ All SDKs live in this monorepo, talk to the same HTTP API and expose the same op
 |---|---|---|---|---|
 | Go | [`go`](go) | `github.com/phineup/ratelimitd/sdk/go` | Go modules (`sdk/go/vX.Y.Z` tags) | stdlib |
 | TypeScript / JavaScript | [`typescript`](typescript) | `@phineup/ratelimitd` | GitHub Packages (npm) | global `fetch` |
-| Python | [`python`](python) | `ratelimitd` | `pip install git+https://…#subdirectory=sdk/python` | stdlib |
+| Python | [`python`](python) | `ratelimitd` | PyPI (`pip install ratelimitd`) | stdlib |
 | Java | [`java`](java) | `com.phineup:ratelimitd` | GitHub Packages (Maven) or `mvn install` | `java.net.http` + Jackson |
 | C# / .NET | [`csharp`](csharp) | `Phineup.Ratelimitd` | GitHub Packages (NuGet) or project reference | `HttpClient` + `System.Text.Json` |
 | Rust | [`rust`](rust) | `ratelimitd` | cargo git dependency | `ureq` + `serde` |
@@ -64,9 +64,10 @@ package registries normalize or reject a leading `v`, so packages are published 
 | TypeScript / JavaScript | GitHub Packages npm (`npm.pkg.github.com`), never npmjs |
 | Java | GitHub Packages Maven (`maven.pkg.github.com/phineup/ratelimitd`) |
 | C# | GitHub Packages NuGet (`nuget.pkg.github.com/phineup`) |
-| Go | pushes the `sdk/go/vX.Y.Z` tag the Go module system needs for subdirectory modules |
+| Go | pushes the `sdk/go/vX.Y.Z` tag the Go module system needs for subdirectory modules, then primes `proxy.golang.org` (pkg.go.dev) |
 | Ruby | GitHub Packages RubyGems (`rubygems.pkg.github.com/phineup`) |
-| Python, Rust, PHP, C++ | installed from the Git tag: GitHub Packages has no PyPI, Cargo or Composer registry |
+| Python | PyPI via trusted publishing (needs the one-time setup described in `sdk-publish.yml`) |
+| Rust, PHP, C++ | installed from the Git tag: GitHub Packages has no Cargo or Composer registry |
 
 Reading GitHub Packages (npm, Maven, NuGet) requires a token with `read:packages`; each SDK README shows the exact configuration.
 

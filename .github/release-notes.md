@@ -18,7 +18,7 @@ packages use plain `@VERSION@` because registries normalize or reject a leading 
 | TypeScript / JavaScript | `@phineup/ratelimitd` (GitHub Packages npm) | `@VERSION@` | `npm i @phineup/ratelimitd@@VERSION@` |
 | Java | `com.phineup:ratelimitd` (GitHub Packages Maven) | `@VERSION@` | `<version>@VERSION@</version>` |
 | C# / .NET | `Phineup.Ratelimitd` (GitHub Packages NuGet) | `@VERSION@` | `dotnet add package Phineup.Ratelimitd --version @VERSION@` |
-| Python | `ratelimitd` (git) | tag `@TAG@` | `pip install "git+https://github.com/@REPO@.git@@TAG@#subdirectory=sdk/python"` |
+| Python | `ratelimitd` (PyPI) | `@VERSION@` | `pip install ratelimitd==@VERSION@` |
 | Rust | `ratelimitd` (git) | tag `@TAG@` | `ratelimitd = { git = "https://github.com/@REPO@", tag = "@TAG@" }` |
 | PHP | `phineup/ratelimitd` (Composer VCS) | `@VERSION@` | `composer require phineup/ratelimitd:@VERSION@` |
 | Ruby | `ratelimitd` (GitHub Packages RubyGems) | `@VERSION@` | `gem "ratelimitd", "@VERSION@"` from `source "https://rubygems.pkg.github.com/phineup"` |
