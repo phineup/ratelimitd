@@ -1,8 +1,27 @@
 name: CI
 
+# One workflow for everything. Every pull request and every push to development / master runs ALL tests:
+# the server (gofmt, vet, race tests with Redis) and every SDK against a real ratelimitd.
+# A `vX.Y.Z` tag (cut by an admin from master; tags are protected by a ruleset) additionally publishes,
+# but only after every test job and the "tag is on master" check passed:
+#
+#   test + go/typescript/python/java/csharp/rust/php/ruby/cmake/xmake  -> tests-passed
+#   tests-passed + verify-tag -> binaries, image (-> release), npm, maven, nuget, rubygems, go-module-proxy, pypi
+#
+# Server: binaries for the GitHub release and the container image on ghcr.io (same `v` prefixed tag).
+# SDKs go to GitHub Packages, never to npmjs / Maven Central / nuget.org:
+#   TypeScript/JavaScript -> npm.pkg.github.com, Java -> maven.pkg.github.com, C# -> nuget.pkg.github.com,
+#   Ruby -> rubygems.pkg.github.com
+# GitHub Packages has no Composer/Cargo registry, so PHP and Rust are installed from the git tag.
+# Go: the module lives in a subdirectory, so it is "published" by the `go-module-proxy` job pushing the
+# sdk/go/vX.Y.Z tag (the restrict-tags ruleset excludes sdk/go/*) and asking proxy.golang.org for it.
+# Python: PyPI via trusted publishing (OIDC, no token). Enable with the repository variable PYPI_PUBLISH=true after
+# adding this workflow (ci.yml, environment `pypi`) as a trusted publisher for project `ratelimitd` on pypi.org.
+# Required status checks (branch rulesets): `test` and `dco`.
 on:
   push:
     branches: [master, development]
+    tags: ['v*.*.*']
   pull_request:
     branches: [master, development]
 
@@ -11,7 +30,11 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  RATELIMITD_URL: http://127.0.0.1:18080
+  IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
   test:
@@ -57,6 +80,7 @@ jobs:
           exit $fail
 
   # Only the development branch (of this repo, not a fork) may be merged into master.
+
   source-branch:
     if: github.event_name == 'pull_request' && github.base_ref == 'master'
     runs-on: ubuntu-latest
@@ -67,3 +91,474 @@ jobs:
             echo "Pull requests to master must come from the development branch of ${{ github.repository }}."
             exit 1
           fi
+
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - name: Test
+        working-directory: sdk/go
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test -race -count=1 ./...
+          if grep -qE '^\s*(require|replace)' go.mod; then
+            echo "sdk/go/go.mod must have no dependencies"; exit 1
+          fi
+
+  typescript:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Test and build
+        working-directory: sdk/typescript
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+          node -e 'if (typeof require("./dist/cjs/index.cjs").Client !== "function") process.exit(1)'
+          node --input-type=module -e 'import { Client } from "./dist/esm/index.js"; if (typeof Client !== "function") process.exit(1)'
+
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Test
+        working-directory: sdk/python
+        run: python -m unittest discover -s tests -t . -v
+
+  java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: sdk/java/pom.xml
+      - name: Test
+        working-directory: sdk/java
+        run: mvn -B -q test
+
+  csharp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test
+        working-directory: sdk/csharp
+        run: dotnet test tests/Ratelimitd.Tests --nologo
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: sdk/rust
+      - name: Test
+        working-directory: sdk/rust
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+          cargo build --no-default-features
+
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, json
+          tools: composer
+      - name: Test
+        working-directory: sdk/php
+        run: |
+          composer install --no-interaction --no-progress
+          vendor/bin/phpunit
+
+  ruby:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - name: Test
+        working-directory: sdk/ruby
+        run: ruby -Ilib -Itest -e 'Dir["test/**/*_test.rb"].each { |f| require "./#{f}" }'
+
+  # C++ and Rust through the shared CMake entry point, on Linux and macOS.
+
+  cmake:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install libcurl headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+      - name: Configure, build, test
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DRATELIMITD_BUILD_RUST=ON
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure
+      - name: Install and consume via find_package
+        run: |
+          cmake --install build --prefix "$RUNNER_TEMP/rl"
+          mkdir "$RUNNER_TEMP/consumer"
+          cat > "$RUNNER_TEMP/consumer/CMakeLists.txt" <<'CMAKE'
+          cmake_minimum_required(VERSION 3.16)
+          project(consumer CXX)
+          find_package(ratelimitd CONFIG REQUIRED)
+          add_executable(app main.cpp)
+          target_link_libraries(app PRIVATE ratelimitd::cpp)
+          CMAKE
+          cat > "$RUNNER_TEMP/consumer/main.cpp" <<'CPP'
+          #include <ratelimitd/ratelimitd.hpp>
+          int main() {
+            ratelimitd::Client c("http://127.0.0.1:18080");
+            c.healthy();
+            return c.allow("sdk_test", "consumer") ? 0 : 1;
+          }
+          CPP
+          cmake -S "$RUNNER_TEMP/consumer" -B "$RUNNER_TEMP/consumer/build" -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/rl"
+          cmake --build "$RUNNER_TEMP/consumer/build"
+          "$RUNNER_TEMP/consumer/build/app"
+
+  xmake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install libcurl headers
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+      - name: Build and test
+        run: |
+          xmake f -y --rust=y -m release
+          xmake build -y
+          xmake test
+          xmake run ratelimitd_rust
+
+  # Single gate: every test job above (server + all SDKs). Publishing needs this.
+  tests-passed:
+    name: All tests passed
+    needs: [test, go, typescript, python, java, csharp, rust, php, ruby, cmake, xmake]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "all tests passed"
+
+  verify-tag:
+    name: Tag must be on master
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag must be on master
+        run: |
+          git fetch origin master
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "Tag $GITHUB_REF_NAME is not on master; releases are cut from master only."
+            exit 1
+          fi
+
+  binaries:
+    needs: [tests-passed, verify-tag]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        goos: [linux, darwin]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          name="ratelimitd_${GITHUB_REF_NAME}_${GOOS}_${GOARCH}"
+          mkdir -p "dist/$name"
+          go build -trimpath -ldflags="-s -w -X main.version=${GITHUB_REF_NAME}" -o "dist/$name/ratelimitd" ./cmd/ratelimitd
+          cp LICENSE README.md config.example.json "dist/$name/"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ratelimitd_${{ matrix.goos }}_${{ matrix.goarch }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  image:
+    needs: [tests-passed, verify-tag]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          # Image tags keep the `v` prefix, identical to the git tag (v1.0.1, v1.0, v1).
+          # latest is applied only to stable (non-prerelease) tags.
+          tags: |
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-') }}
+            type=semver,pattern=v{{major}},enable=${{ !contains(github.ref_name, '-') && !startsWith(github.ref_name, 'v0.') }}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ github.ref_name }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  npm-github-packages:
+    needs: [tests-passed, verify-tag]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: '@phineup'
+      - name: Version from tag
+        working-directory: sdk/typescript
+        run: npm version --no-git-tag-version "${GITHUB_REF_NAME#v}"
+      - name: Install (prepack builds the package)
+        working-directory: sdk/typescript
+        run: npm ci --no-audit --no-fund
+      - name: Publish to GitHub Packages
+        working-directory: sdk/typescript
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          case "$GITHUB_REF_NAME" in
+            *-*) npm publish --tag next ;;
+            *)   npm publish ;;
+          esac
+
+  maven-github-packages:
+    needs: [tests-passed, verify-tag]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          server-id: github
+      - name: Version from tag
+        working-directory: sdk/java
+        run: mvn -B -q versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
+      - name: Deploy
+        working-directory: sdk/java
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -B deploy -DskipTests
+
+  nuget-github-packages:
+    needs: [tests-passed, verify-tag]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Pack
+        working-directory: sdk/csharp
+        run: dotnet pack src/Ratelimitd -c Release -p:Version="${GITHUB_REF_NAME#v}" -o out
+      - name: Push to GitHub Packages
+        working-directory: sdk/csharp
+        run: |
+          dotnet nuget push out/*.nupkg \
+            --source "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json" \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
+
+  rubygems-github-packages:
+    needs: [tests-passed, verify-tag]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - name: Version from tag
+        working-directory: sdk/ruby
+        run: sed -i "s/^\(  s.version *= *\).*/\1\"${GITHUB_REF_NAME#v}\"/" ratelimitd.gemspec
+      - name: Build and push to GitHub Packages
+        working-directory: sdk/ruby
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gem build ratelimitd.gemspec
+          mkdir -p ~/.gem
+          printf -- "---\n:github: Bearer %s\n" "$GITHUB_TOKEN" > ~/.gem/credentials
+          chmod 0600 ~/.gem/credentials
+          gem push --key github --host "https://rubygems.pkg.github.com/${GITHUB_REPOSITORY_OWNER}" ratelimitd-*.gem
+
+  go-module-proxy:
+    needs: [tests-passed, verify-tag]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      # Go resolves a subdirectory module from the prefixed tag sdk/go/vX.Y.Z. The restrict-tags
+      # ruleset excludes refs/tags/sdk/go/* so this job can push it with GITHUB_TOKEN; every
+      # other tag stays admin-only.
+      - name: Tag sdk/go/<version> (idempotent)
+        run: |
+          tag="sdk/go/${GITHUB_REF_NAME}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "$tag already exists"; exit 0
+          fi
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
+      - name: Prime proxy.golang.org
+        run: |
+          mod=github.com/phineup/ratelimitd/sdk/go
+          for i in 1 2 3 4 5; do
+            curl -fsS "https://proxy.golang.org/$mod/@v/${GITHUB_REF_NAME}.info" && exit 0
+            sleep 10
+          done
+          echo "proxy.golang.org has not picked up $mod@$GITHUB_REF_NAME yet (it will on first go get)"
+
+  pypi:
+    needs: [tests-passed, verify-tag]
+    # Opt-in: set the repository variable PYPI_PUBLISH=true once the PyPI trusted publisher exists.
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.PYPI_PUBLISH == 'true' }}
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Version from tag
+        working-directory: sdk/python
+        run: |
+          sed -i "s/^version = .*/version = \"${GITHUB_REF_NAME#v}\"/" pyproject.toml
+          sed -i "s/^__version__ = .*/__version__ = \"${GITHUB_REF_NAME#v}\"/" ratelimitd/__init__.py
+      - name: Build
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: sdk/python/dist/
+
+  release:
+    needs: [binaries, image]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: ratelimitd_*
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum *.tar.gz > checksums.txt
+      - name: Release notes (package list for this version)
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          major_minor="v$(echo "$version" | cut -d. -f1,2)"
+          sed -e "s|@TAG@|$GITHUB_REF_NAME|g" -e "s|@VERSION@|$version|g" \
+              -e "s|@MAJOR_MINOR@|$major_minor|g" -e "s|@REPO@|$GITHUB_REPOSITORY|g" \
+              .github/release-notes.md > release-notes.md
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The package list goes first; --generate-notes appends the changelog.
+          flags="--notes-file release-notes.md --generate-notes --verify-tag"
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags="$flags --prerelease"; else flags="$flags --latest"; fi
+          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/checksums.txt --title "$GITHUB_REF_NAME" $flags
