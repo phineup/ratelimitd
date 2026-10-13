@@ -120,10 +120,18 @@ jobs:
       - name: Checksums
         working-directory: dist
         run: sha256sum *.tar.gz > checksums.txt
+      - name: Release notes (package list for this version)
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          major_minor="v$(echo "$version" | cut -d. -f1,2)"
+          sed -e "s|@TAG@|$GITHUB_REF_NAME|g" -e "s|@VERSION@|$version|g" \
+              -e "s|@MAJOR_MINOR@|$major_minor|g" -e "s|@REPO@|$GITHUB_REPOSITORY|g" \
+              .github/release-notes.md > release-notes.md
       - name: GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          flags="--generate-notes --verify-tag"
+          # The package list goes first; --generate-notes appends the changelog.
+          flags="--notes-file release-notes.md --generate-notes --verify-tag"
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags="$flags --prerelease"; else flags="$flags --latest"; fi
           gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/checksums.txt --title "$GITHUB_REF_NAME" $flags
