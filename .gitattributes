@@ -1,0 +1,20 @@
+# Keep `composer require phineup/ratelimitd` (dist archive) down to the PHP SDK.
+/.github        export-ignore
+/cmd            export-ignore
+/limiter        export-ignore
+/server         export-ignore
+/packaging      export-ignore
+/sdk/cpp        export-ignore
+/sdk/csharp     export-ignore
+/sdk/go         export-ignore
+/sdk/java       export-ignore
+/sdk/python     export-ignore
+/sdk/ruby       export-ignore
+/sdk/rust       export-ignore
+/sdk/typescript export-ignore
+/sdk/php/tests  export-ignore
+/Dockerfile     export-ignore
+/docker-compose.yml export-ignore
+/CMakeLists.txt export-ignore
+/xmake.lua      export-ignore
+/go.mod         export-ignore

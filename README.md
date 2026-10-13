@@ -2,7 +2,19 @@
 
 A single-binary Go sidecar rate limiting service. Zero dependencies (stdlib only).
 
+- **Four algorithms**: fixed window (clock or first-request anchored), sliding window, sliding log, token bucket.
+- **Multi-rule policies**: a request is counted only if every rule allows it, so a denial never burns quota.
+- **Memory or Redis store**: single instance in-process, or shared across instances with one atomic Lua call per decision.
+- **Language-agnostic**: plain HTTP/JSON API plus official SDKs for Go, TypeScript/JavaScript, Python, Java, C#, Rust, C++, PHP and Ruby.
+- **Fails open by default**: if Redis is down, requests are allowed and flagged `degraded: true` (configurable with `on_error`).
+
+## Contents
+
+[Run](#run) · [Algorithms](#algorithms-algorithm) · [API](#api) · [Client SDKs](#client-sdks) · [Test](#test) · [Notes](#notes) · [Contributing](#contributing)
+
 ## Run
+
+The server listens on `:8080`. Check it with `curl localhost:8080/healthz`.
 
 ```bash
 docker run -p 8080:8080 ghcr.io/phineup/ratelimitd:latest   # or pin a release: ghcr.io/phineup/ratelimitd:v1.0.1
@@ -53,10 +65,43 @@ With `on_error: allow` (default), if Redis goes down requests are let through wi
 
 When auth is enabled: `Authorization: Bearer <token>`. `/healthz` is always open.
 
-## SDKs
+## Client SDKs
 
-Client SDKs live in [`sdk/`](sdk): Go, TypeScript/JavaScript, Python, Java, C#, Rust, C++, PHP and Ruby (see [`sdk/README.md`](sdk/README.md)).
-C++ and Rust share the root `CMakeLists.txt`; the xmake package lives in [phineup/xmake-repo](https://github.com/phineup/xmake-repo).
+Official clients live in [`sdk/`](sdk) and share the same operations (`check`, `allow`, `reset`, `policies`, `healthy`).
+Each has its own README with installation and full examples; see the [SDK overview](sdk/README.md).
+
+| language | install | docs |
+|---|---|---|
+| Go | `go get github.com/phineup/ratelimitd/sdk/go` | [sdk/go](sdk/go) |
+| TypeScript / JavaScript | `npm i @phineup/ratelimitd` (GitHub Packages) | [sdk/typescript](sdk/typescript) |
+| Python | `pip install "git+https://github.com/phineup/ratelimitd.git#subdirectory=sdk/python"` | [sdk/python](sdk/python) |
+| Java | Maven `com.phineup:ratelimitd` (GitHub Packages) | [sdk/java](sdk/java) |
+| C# / .NET | `dotnet add package Phineup.Ratelimitd` (GitHub Packages) | [sdk/csharp](sdk/csharp) |
+| Rust | `ratelimitd = { git = "https://github.com/phineup/ratelimitd" }` | [sdk/rust](sdk/rust) |
+| C++ | xmake (`phineup/xmake-repo`) or CMake `ratelimitd::cpp` | [sdk/cpp](sdk/cpp) |
+| PHP | Composer VCS repository `phineup/ratelimitd` | [sdk/php](sdk/php) |
+| Ruby | Bundler git source with `glob: "sdk/ruby/*.gemspec"` | [sdk/ruby](sdk/ruby) |
+
+### xmake package
+
+The C++ SDK is available as an xmake package from [phineup/xmake-repo](https://github.com/phineup/xmake-repo) (always pass `master`, the stable snapshot):
+
+```lua
+add_repositories("phineup https://github.com/phineup/xmake-repo.git master")
+add_requires("ratelimitd")
+
+target("app")
+    set_kind("binary")
+    add_files("main.cpp")
+    add_packages("ratelimitd")
+```
+
+CMake works as well (`FetchContent` or `find_package(ratelimitd)`), see [sdk/cpp](sdk/cpp/README.md).
+
+### Versioning
+
+Release tags, container image tags and `ratelimitd -version` all use the `vX.Y.Z` form. Language packages are published
+as plain `X.Y.Z` from the same tag, because package registries normalize or reject a leading `v`. Details in [sdk/README.md](sdk/README.md#versioning-and-publishing).
 
 ## Test
 

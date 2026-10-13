@@ -11,8 +11,16 @@
     <Description>.NET client for the ratelimitd rate limiting sidecar</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/phineup/ratelimitd</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/phineup/ratelimitd</PackageProjectUrl>
+    <PackageTags>rate-limit;ratelimit;ratelimitd;sidecar</PackageTags>
+    <Authors>ratelimitd contributors</Authors>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
 </Project>

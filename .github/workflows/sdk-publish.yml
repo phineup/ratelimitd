@@ -1,7 +1,9 @@
 name: Publish SDKs
 
 # Runs only for version tags (protected by a ruleset), like release.yml.
-# The TypeScript/JavaScript SDK goes to GitHub Packages (npm.pkg.github.com), never to npmjs.
+# Everything goes to GitHub Packages, never to npmjs / Maven Central / nuget.org:
+#   TypeScript/JavaScript -> npm.pkg.github.com, Java -> maven.pkg.github.com, C# -> nuget.pkg.github.com
+# The Go SDK lives in a subdirectory module, so it is "published" by pushing the sdk/go/vX.Y.Z tag.
 on:
   push:
     tags: ['v*.*.*']
@@ -54,3 +56,70 @@ jobs:
             *-*) npm publish --tag next ;;
             *)   npm publish ;;
           esac
+
+  maven-github-packages:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          server-id: github
+      - name: Version from tag
+        working-directory: sdk/java
+        run: mvn -B -q versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
+      - name: Test and deploy
+        working-directory: sdk/java
+        env:
+          RATELIMITD_URL: http://127.0.0.1:18080
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -B deploy
+
+  nuget-github-packages:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Test
+        working-directory: sdk/csharp
+        env:
+          RATELIMITD_URL: http://127.0.0.1:18080
+        run: dotnet test tests/Ratelimitd.Tests
+      - name: Pack
+        working-directory: sdk/csharp
+        run: dotnet pack src/Ratelimitd -c Release -p:Version="${GITHUB_REF_NAME#v}" -o out
+      - name: Push to GitHub Packages
+        working-directory: sdk/csharp
+        run: |
+          dotnet nuget push out/*.nupkg \
+            --source "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json" \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
+
+  go-module-tag:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag sdk/go/<version> (Go resolves subdirectory modules by prefixed tags)
+        run: |
+          tag="sdk/go/${GITHUB_REF_NAME}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "$tag already exists"; exit 0
+          fi
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
