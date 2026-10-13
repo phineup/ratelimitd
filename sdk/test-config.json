@@ -1,0 +1,15 @@
+{
+  "listen": "127.0.0.1:18080",
+  "store": { "type": "memory" },
+  "on_error": "allow",
+  "auth_tokens": [],
+  "default_policy": "sdk_test",
+  "policies": {
+    "sdk_test": {
+      "description": "SDK integration tests: 3 per minute",
+      "rules": [
+        { "name": "per_minute", "algorithm": "fixed_window", "limit": 3, "window": "1m" }
+      ]
+    }
+  }
+}
