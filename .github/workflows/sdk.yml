@@ -13,7 +13,6 @@ on:
       - 'go.mod'
       - 'CMakeLists.txt'
       - 'xmake.lua'
-      - 'packaging/**'
       - '.github/actions/**'
       - '.github/workflows/sdk.yml'
   pull_request:
@@ -26,7 +25,6 @@ on:
       - 'go.mod'
       - 'CMakeLists.txt'
       - 'xmake.lua'
-      - 'packaging/**'
       - '.github/actions/**'
       - '.github/workflows/sdk.yml'
 
@@ -223,27 +221,3 @@ jobs:
           xmake build -y
           xmake test
           xmake run ratelimitd_rust
-      - name: Consume the xmake package
-        run: |
-          mkdir "$RUNNER_TEMP/xconsumer" && cd "$RUNNER_TEMP/xconsumer"
-          cat > xmake.lua <<LUA
-          add_rules("mode.release")
-          set_languages("c++17")
-          add_repositories("ratelimitd $GITHUB_WORKSPACE/packaging/xmake")
-          add_requires("ratelimitd")
-          target("app")
-              set_kind("binary")
-              add_files("main.cpp")
-              add_packages("ratelimitd")
-          LUA
-          cat > main.cpp <<'CPP'
-          #include <ratelimitd/ratelimitd.hpp>
-          int main() {
-            ratelimitd::Client c("http://127.0.0.1:18080");
-            c.healthy();
-            return c.allow("sdk_test", "xmake-consumer") ? 0 : 1;
-          }
-          CPP
-          xmake f -y
-          xmake build -y
-          xmake run

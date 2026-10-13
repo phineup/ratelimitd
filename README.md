@@ -56,7 +56,7 @@ When auth is enabled: `Authorization: Bearer <token>`. `/healthz` is always open
 ## SDKs
 
 Client SDKs live in [`sdk/`](sdk): Go, TypeScript/JavaScript, Python, Java, C#, Rust, C++, PHP and Ruby (see [`sdk/README.md`](sdk/README.md)).
-C++ and Rust share the root `CMakeLists.txt`; an xmake package is in `packaging/xmake`.
+C++ and Rust share the root `CMakeLists.txt`; the xmake package lives in [phineup/xmake-repo](https://github.com/phineup/xmake-repo).
 
 ## Test
 
