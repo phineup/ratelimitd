@@ -17,7 +17,7 @@ if (!res.allowed) {
 
 Methods: `check`, `allow`, `reset`, `policies`, `healthy`. Other non-2xx responses throw `ApiError` (`status()`); network failures throw `TransportError`.
 
-Build with the repository's root `CMakeLists.txt` (shared with the Rust SDK), `sdk/cpp/CMakeLists.txt` standalone, or xmake (`xmake.lua`, package in `packaging/xmake`). Tests: `ctest`; set `RATELIMITD_URL` for the real-server test.
+Build with the repository's root `CMakeLists.txt` (shared with the Rust SDK), `sdk/cpp/CMakeLists.txt` standalone, or xmake (`xmake.lua`; the `ratelimitd` package is in [phineup/xmake-repo](https://github.com/phineup/xmake-repo)). Tests: `ctest`; set `RATELIMITD_URL` for the real-server test.
 
 ```cmake
 find_package(ratelimitd CONFIG REQUIRED)
