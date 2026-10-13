@@ -13,7 +13,7 @@ go get github.com/phineup/ratelimitd/sdk/go@latest
 ```
 
 The module lives in the `sdk/go` subdirectory, so Go resolves versions from tags named `sdk/go/vX.Y.Z`
-(created automatically by the publish workflow for every `vX.Y.Z` release). Until a tag for the version you want
+(the maintainer pushes `sdk/go/vX.Y.Z` together with every `vX.Y.Z` release). Until a tag for the version you want
 exists you can use a branch or commit:
 
 ```bash

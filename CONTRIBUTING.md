@@ -51,6 +51,13 @@ AGPL) or code you are not authorized to share (e.g. from your employer).
   builds Linux/macOS binaries for the GitHub release and publishes the container image to
   `ghcr.io/phineup/ratelimitd` with the same `v`-prefixed tag, marking it `latest` (stable tags only;
   `-rc.1` style tags are prereleases).
+- Push the Go module tag with every release so `go get github.com/phineup/ratelimitd/sdk/go@vX.Y.Z` resolves
+  (the Go SDK lives in a subdirectory, and tag creation is admin-only so CI cannot do it):
+
+  ```bash
+  git tag -a vX.Y.Z -m vX.Y.Z && git tag -a sdk/go/vX.Y.Z vX.Y.Z^{} -m "sdk/go vX.Y.Z"
+  git push origin vX.Y.Z sdk/go/vX.Y.Z
+  ```
 
 ## Pull request process
 
