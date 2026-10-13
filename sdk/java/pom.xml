@@ -19,6 +19,20 @@
     </license>
   </licenses>
 
+  <scm>
+    <url>https://github.com/phineup/ratelimitd</url>
+    <connection>scm:git:https://github.com/phineup/ratelimitd.git</connection>
+  </scm>
+
+  <!-- GitHub Packages (Maven). Published by .github/workflows/sdk-publish.yml on version tags. -->
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/phineup/ratelimitd</url>
+    </repository>
+  </distributionManagement>
+
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
