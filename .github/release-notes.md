@@ -21,7 +21,7 @@ packages use plain `@VERSION@` because registries normalize or reject a leading 
 | Python | `ratelimitd` (git) | tag `@TAG@` | `pip install "git+https://github.com/@REPO@.git@@TAG@#subdirectory=sdk/python"` |
 | Rust | `ratelimitd` (git) | tag `@TAG@` | `ratelimitd = { git = "https://github.com/@REPO@", tag = "@TAG@" }` |
 | PHP | `phineup/ratelimitd` (Composer VCS) | `@VERSION@` | `composer require phineup/ratelimitd:@VERSION@` |
-| Ruby | `ratelimitd` (git) | tag `@TAG@` | `gem "ratelimitd", git: "https://github.com/@REPO@.git", tag: "@TAG@", glob: "sdk/ruby/*.gemspec"` |
+| Ruby | `ratelimitd` (GitHub Packages RubyGems) | `@VERSION@` | `gem "ratelimitd", "@VERSION@"` from `source "https://rubygems.pkg.github.com/phineup"` |
 | C++ | xmake `ratelimitd` / CMake `ratelimitd::cpp` | tag `@TAG@` | `GIT_TAG @TAG@` with `FetchContent`, or the [xmake-repo](https://github.com/phineup/xmake-repo) package |
 
 Per-SDK installation guides: [`sdk/README.md`](https://github.com/@REPO@/blob/@TAG@/sdk/README.md).

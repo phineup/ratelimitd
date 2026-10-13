@@ -80,7 +80,7 @@ Each has its own README with installation and full examples; see the [SDK overvi
 | Rust | `ratelimitd = { git = "https://github.com/phineup/ratelimitd" }` | [sdk/rust](sdk/rust) |
 | C++ | xmake (`phineup/xmake-repo`) or CMake `ratelimitd::cpp` | [sdk/cpp](sdk/cpp) |
 | PHP | Composer VCS repository `phineup/ratelimitd` | [sdk/php](sdk/php) |
-| Ruby | Bundler git source with `glob: "sdk/ruby/*.gemspec"` | [sdk/ruby](sdk/ruby) |
+| Ruby | GitHub Packages RubyGems, or Bundler git source with `glob:` | [sdk/ruby](sdk/ruby) |
 
 ### xmake package
 

@@ -13,7 +13,7 @@ All SDKs live in this monorepo, talk to the same HTTP API and expose the same op
 | Rust | [`rust`](rust) | `ratelimitd` | cargo git dependency | `ureq` + `serde` |
 | C++ | [`cpp`](cpp) | xmake `ratelimitd`, CMake `ratelimitd::cpp` | xmake (`phineup/xmake-repo`), FetchContent, `find_package` | libcurl, built-in JSON |
 | PHP | [`php`](php) | `phineup/ratelimitd` | Composer VCS repository | ext-curl |
-| Ruby | [`ruby`](ruby) | `ratelimitd` | Bundler git source (`glob:`) | `net/http` |
+| Ruby | [`ruby`](ruby) | `ratelimitd` | GitHub Packages (RubyGems) or Bundler git source | `net/http` |
 
 Each directory has its own README with installation, a full usage example and the API reference.
 
@@ -65,7 +65,8 @@ package registries normalize or reject a leading `v`, so packages are published 
 | Java | GitHub Packages Maven (`maven.pkg.github.com/phineup/ratelimitd`) |
 | C# | GitHub Packages NuGet (`nuget.pkg.github.com/phineup`) |
 | Go | pushes the `sdk/go/vX.Y.Z` tag the Go module system needs for subdirectory modules |
-| Python, Rust, Ruby, PHP, C++ | installed from the Git tag (no registry publish) |
+| Ruby | GitHub Packages RubyGems (`rubygems.pkg.github.com/phineup`) |
+| Python, Rust, PHP, C++ | installed from the Git tag: GitHub Packages has no PyPI, Cargo or Composer registry |
 
 Reading GitHub Packages (npm, Maven, NuGet) requires a token with `read:packages`; each SDK README shows the exact configuration.
 

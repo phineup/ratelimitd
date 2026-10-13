@@ -2,7 +2,9 @@ name: Publish SDKs
 
 # Runs only for version tags (protected by a ruleset), like release.yml.
 # Everything goes to GitHub Packages, never to npmjs / Maven Central / nuget.org:
-#   TypeScript/JavaScript -> npm.pkg.github.com, Java -> maven.pkg.github.com, C# -> nuget.pkg.github.com
+#   TypeScript/JavaScript -> npm.pkg.github.com, Java -> maven.pkg.github.com, C# -> nuget.pkg.github.com,
+#   Ruby -> rubygems.pkg.github.com
+# GitHub Packages has no PyPI/Composer/Cargo registry, so Python, PHP and Rust are installed from the git tag.
 # The Go SDK lives in a subdirectory module, so it is "published" by pushing the sdk/go/vX.Y.Z tag.
 on:
   push:
@@ -107,6 +109,39 @@ jobs:
           dotnet nuget push out/*.nupkg \
             --source "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json" \
             --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
+
+  rubygems-github-packages:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/start-ratelimitd
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - name: Version from tag
+        working-directory: sdk/ruby
+        run: sed -i "s/^\(  s.version *= *\).*/\1\"${GITHUB_REF_NAME#v}\"/" ratelimitd.gemspec
+      - name: Test
+        working-directory: sdk/ruby
+        env:
+          RATELIMITD_URL: http://127.0.0.1:18080
+        run: |
+          gem install minitest rake --no-document
+          rake test
+      - name: Build and push to GitHub Packages
+        working-directory: sdk/ruby
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gem build ratelimitd.gemspec
+          mkdir -p ~/.gem
+          printf -- "---\n:github: Bearer %s\n" "$GITHUB_TOKEN" > ~/.gem/credentials
+          chmod 0600 ~/.gem/credentials
+          gem push --key github --host "https://rubygems.pkg.github.com/${GITHUB_REPOSITORY_OWNER}" ratelimitd-*.gem
 
   go-module-tag:
     needs: verify

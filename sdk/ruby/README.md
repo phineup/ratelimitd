@@ -4,7 +4,24 @@ Standard-library-only (`net/http`) Ruby client for [ratelimitd](https://github.c
 
 ## Install
 
-Not on RubyGems yet; use Bundler's git source. The gem lives in a subdirectory, so pass `glob:`:
+### GitHub Packages (RubyGems)
+
+Releases are published to GitHub Packages (not rubygems.org). Reading needs a personal access token with `read:packages`:
+
+```bash
+bundle config set --global https://rubygems.pkg.github.com/phineup YOUR_GITHUB_USERNAME:YOUR_TOKEN
+```
+
+```ruby
+# Gemfile
+source "https://rubygems.pkg.github.com/phineup" do
+  gem "ratelimitd", "~> 1.1"
+end
+```
+
+### Git source (no token)
+
+The gem lives in a subdirectory, so pass `glob:`:
 
 ```ruby
 # Gemfile
