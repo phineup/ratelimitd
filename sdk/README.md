@@ -64,7 +64,7 @@ package registries normalize or reject a leading `v`, so packages are published 
 | TypeScript / JavaScript | GitHub Packages npm (`npm.pkg.github.com`), never npmjs |
 | Java | GitHub Packages Maven (`maven.pkg.github.com/phineup/ratelimitd`) |
 | C# | GitHub Packages NuGet (`nuget.pkg.github.com/phineup`) |
-| Go | the maintainer pushes the `sdk/go/vX.Y.Z` tag next to `vX.Y.Z` (Go needs it for subdirectory modules; tags are admin-only); the job verifies it and primes `proxy.golang.org` (pkg.go.dev) |
+| Go | pushes the `sdk/go/vX.Y.Z` tag the Go module system needs for subdirectory modules, then primes `proxy.golang.org` (pkg.go.dev) |
 | Ruby | GitHub Packages RubyGems (`rubygems.pkg.github.com/phineup`) |
 | Python | PyPI via trusted publishing (needs the one-time setup described in `sdk-publish.yml`) |
 | Rust, PHP, C++ | installed from the Git tag: GitHub Packages has no Cargo or Composer registry |
