@@ -1,7 +1,7 @@
 name: SDKs
 
 # Client SDK tests. Runs only when SDK code, the server it talks to, or the build files change.
-# Nothing here publishes to a registry; see sdk-publish.yml.
+# Nothing here publishes to a registry; see release.yml.
 on:
   push:
     branches: [master, development]
