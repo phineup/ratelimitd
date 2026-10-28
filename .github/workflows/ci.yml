@@ -350,7 +350,7 @@ jobs:
 
       - name: Image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           # Image tags keep the `v` prefix, identical to the git tag (v1.0.1, v1.0, v1).
