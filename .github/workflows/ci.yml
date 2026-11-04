@@ -135,7 +135,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/start-ratelimitd
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Test
@@ -513,7 +513,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Version from tag
